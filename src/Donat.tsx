@@ -1,4 +1,4 @@
-import {useMemo} from "react";
+import {useCallback, useMemo, useRef} from "react";
 import * as d3 from "d3";
 import {animated, useSpring} from "react-spring";
 import styled from "styled-components";
@@ -87,6 +87,10 @@ const Color = styled.span`
 const LegendItemWrapper = styled.div`
     padding-left: 15px;
     line-height: 1.6;
+
+    &.active {
+      text-decoration: underline;
+    }
   
     & > div {
       color: #888;
@@ -124,12 +128,39 @@ export const Donut = ({ size, data }: IDonatProps) => {
         );
     });
 
+    const showLegend = useCallback((e: any) => {
+        let index = -1;
+
+        if (e.target.nodeName === 'path') {
+            index = Array.prototype.indexOf.call(e.target.parentNode.childNodes, e.target);
+        }
+
+        if (index > -1)
+            (legendRef.current?.childNodes[index] as HTMLElement).classList.add('active');
+    }, []);
+
+    const clearLegend = useCallback((e: any) => {
+        let index = -1;
+
+        if (e.target.nodeName === 'path') {
+            index = Array.prototype.indexOf.call(e.target.parentNode.childNodes, e.target);
+        }
+
+        if (index > -1)
+            (legendRef.current?.childNodes[index] as HTMLElement).classList.remove('active');
+    },[]);
+
+    const legendRef = useRef<HTMLInputElement | null>(null);
+
     return (
         <Wrapper>
-            <svg width={SIZES[size]} height={SIZES[size]} style={{ display: "inline-block" }}>
+            <svg width={SIZES[size]} height={SIZES[size]} style={{ display: "inline-block" }}
+                 onMouseOver={showLegend}
+                 onMouseOut={clearLegend}
+            >
                 <g transform={`translate(${SIZES[size] / 2}, ${SIZES[size] / 2})`}>{allPaths}</g>
             </svg>
-            <Legend>
+            <Legend ref={legendRef}>
                 {
                     data.map(({color, label, value}) => ( <LegendItem key={color} {...{
                         label,
