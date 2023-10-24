@@ -1,16 +1,32 @@
 import {useMemo} from "react";
 import * as d3 from "d3";
 import {animated, useSpring} from "react-spring";
+import styled from "styled-components";
 
-export interface IItem {
+export type IItem = {
     label: string;
     value: number;
     color: string;
 }
 
-interface IDonatProps {
+type IDonatProps = {
     size: 'small' | 'medium' | 'large';
     data: IItem[];
+}
+
+type ISliceProps = {
+    color: string;
+    radius: number;
+    width: number;
+    slice: d3.PieArcDatum<IItem>;
+};
+
+type ILegendItemProps = {
+    children?: never;
+    color: string;
+    label: string;
+    value: number;
+    perc: number;
 }
 
 const SIZES = {
@@ -19,42 +35,19 @@ const SIZES = {
     'large': 200,
 };
 
-export const Donut = ({ size, data }: IDonatProps) => {
-    const radius = SIZES[size] / 2;
+const Wrapper = styled.div`
+    display: flex;
+    gap:20px;
+    align-items: center;
+`;
 
-    const pie = useMemo(() => {
-        const pieGenerator = d3
-            .pie<any, IItem>()
-            .value((d) => d.value || 0);
-        return pieGenerator(data);
-    }, [data]);
+const Legend = styled.div`
+    font-size: 18px;
+    color: #666;
+    font-weight: 500;
+`;
 
-    const allPaths = pie.map((slice, i) => {
-        return (
-            <Slice
-                key={slice.data.label}
-                radius={radius}
-                slice={slice}
-                color={slice.data.color}
-                width={SIZES[size] / 3.3}
-            />
-        );
-    });
-
-    return (
-        <svg width={SIZES[size]} height={SIZES[size]} style={{ display: "inline-block" }}>
-            <g transform={`translate(${SIZES[size] / 2}, ${SIZES[size] / 2})`}>{allPaths}</g>
-        </svg>
-    );
-};
-
-type SliceProps = {
-    color: string;
-    radius: number;
-    width: number;
-    slice: d3.PieArcDatum<IItem>;
-};
-const Slice = ({ slice, width, radius, color }: SliceProps) => {
+const Slice = ({ slice, width, radius, color }: ISliceProps) => {
     const arcPathGenerator = d3.arc();
 
     const springProps = useSpring({
@@ -76,7 +69,77 @@ const Slice = ({ slice, width, radius, color }: SliceProps) => {
         <animated.path
             d={d as any}
             fill={color}
+            stroke="white"
         />
+    );
+};
+
+const Color = styled.span`
+    display: inline-block;
+    vertical-align: middle;
+    width: 12px;
+    height: 12px;
+    margin: 0 8px 0 -18px; 
+    border-radius: 50%;
+    background-color: currentColor;
+`;
+
+const LegendItemWrapper = styled.div`
+    padding-left: 15px;
+    line-height: 1.6;
+  
+    & > div {
+      color: #888;
+    }
+`;
+
+const LegendItem = ({color, label, value, perc}: ILegendItemProps) => {
+    return <LegendItemWrapper>
+        <Color style={{color}} />
+        <span>{label}</span>
+        <div>{new Intl.NumberFormat('ru-RU').format(value)} ({perc}%)</div>
+    </LegendItemWrapper>
+};
+
+export const Donut = ({ size, data }: IDonatProps) => {
+    const radius = SIZES[size] / 2;
+    const sum = useMemo(() => data.reduce((prev, cur) => prev + cur.value, 0), [data]);
+
+    const pie = useMemo(() => {
+        const pieGenerator = d3
+            .pie<any, IItem>()
+            .value((d) => d.value || 0);
+        return pieGenerator(data);
+    }, [data]);
+
+    const allPaths = pie.map((slice, i) => {
+        return (
+            <Slice
+                key={slice.data.label}
+                radius={radius}
+                slice={slice}
+                color={slice.data.color}
+                width={SIZES[size] / 3.3}
+            />
+        );
+    });
+
+    return (
+        <Wrapper>
+            <svg width={SIZES[size]} height={SIZES[size]} style={{ display: "inline-block" }}>
+                <g transform={`translate(${SIZES[size] / 2}, ${SIZES[size] / 2})`}>{allPaths}</g>
+            </svg>
+            <Legend>
+                {
+                    data.map(({color, label, value}) => ( <LegendItem key={color} {...{
+                        label,
+                        value,
+                        color,
+                        perc: Math.round(value / sum * 100)
+                    }}/> ))
+                }
+            </Legend>
+        </Wrapper>
     );
 };
 
